@@ -18,18 +18,11 @@ Navigate to Manage methodologies
 
 Create new Methodology
     [Tags]  HappyPath
-    user waits until page contains button  Create new methodology
-    user clicks button  Create new methodology
-    user waits until page contains element  css:createMethodologyForm-title
+    user waits until page contains link  Create new methodology
+    user clicks link  Create new methodology
+    user waits until page contains element  css:#createMethodologyForm-title
     user enters text into element  css:#createMethodologyForm-title  ${METHODOLOGY_NAME}
     user clicks button  Create methodology
-
-# Navigate to created methodology
-#     [Tags]  HappyPath
-#     user waits until page contains link  Draft methodologies
-#     user clicks link  Draft methodologies
-#     user waits until page contains link  ${METHODOLOGY_NAME}
-#     user clicks link  ${METHODOLOGY_NAME}
 
 Add methodology content
     [Tags]  HappyPath
@@ -38,17 +31,26 @@ Add methodology content
     user waits until page contains button  Add new section
     user clicks button  Add new section
     user clicks button  New section
-    user watis until page contains button  Add text block
+    user waits until page contains button  Add text block
     user clicks button  Add text block
     user waits until page contains button  Edit block
     user clicks button  Edit block
     user presses keys  This is some default text 
+    user scrolls to element  xpath://a[text()="Go to top"]
     user clicks button  Save
     user clicks button  Edit section title
     user enters text into element  css:#heading  Default section title
     user clicks button  Save section title
 
+Approve methodology
+    [Tags]  HappyPath
+    user clicks link  Release status
+    user clicks button  Edit status
+    user clicks radio  Approved for publication
+    user enters text into element  css:#methodologyStatusForm-internalReleaseNote  approved methodology
+    user clicks button  Update status
 
-
-Sleep
-    sleep  999999
+Check for approved tag
+    [Tags]  HappyPath
+    user waits until page contains element  xpath://strong[text()="Approved"]
+    user checks page contains element  xpath://strong[text()="Approved"]
