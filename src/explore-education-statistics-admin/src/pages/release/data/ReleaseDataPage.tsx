@@ -57,10 +57,7 @@ const ReleaseDataPage = () => {
         id="dataUploadTab"
       >
         <TabsSection id="data-upload" title="Data uploads">
-          <ReleaseDataUploadsSection
-            publicationId={publication.id}
-            releaseId={releaseId}
-          />
+          <ReleaseDataUploadsSection releaseId={releaseId} />
         </TabsSection>
         <TabsSection id="footnotes" title="Footnotes">
           <ReleaseFootnotesSection
