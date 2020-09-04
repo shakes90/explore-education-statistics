@@ -42,20 +42,12 @@ const ReleaseDataPage = () => {
   }, [releaseId]);
 
   useEffect(() => {
-    getFootnoteData();
+    if (activeTab === 'footnotes') getFootnoteData();
   }, [activeTab, getFootnoteData]);
 
   return (
     <>
-      <Tabs
-        onToggle={tab => {
-          if (tab.id === 'footnotes') {
-            getFootnoteData();
-          }
-          setActiveTab(tab.id);
-        }}
-        id="dataUploadTab"
-      >
+      <Tabs onToggle={tab => setActiveTab(tab.id)} id="dataUploadTab">
         <TabsSection id="data-upload" title="Data uploads">
           <ReleaseDataUploadsSection releaseId={releaseId} />
         </TabsSection>
