@@ -14,7 +14,7 @@ function getPublicationDate(path: string) {
   const singleYearDate = singleYearDateFormat.exec(path);
 
   if (twoYearDate) {
-    return `, ${twoYearDate[1]}/${twoYearDate[2]}`;
+    return `, ${twoYearDate[1]} to 20${twoYearDate[2]}`;
   }
 
   if (singleYearDate) {
