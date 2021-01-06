@@ -458,6 +458,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
             observationsTable.Columns.Add("TimeIdentifier", typeof(string));
             observationsTable.Columns.Add("Measures", typeof(string));
             observationsTable.Columns.Add("CsvRow", typeof(long));
+            observationsTable.Columns.Add("FilterItemIds", typeof(string));
 
             var observationsFilterItemsTable = new DataTable();
             observationsFilterItemsTable.Columns.Add("ObservationId", typeof(Guid));
@@ -466,6 +467,10 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
 
             foreach (var o in observations)
             {
+                var filterItemIdsString = o
+                    .FilterItems
+                    .Aggregate("", (current, next) => current + (current.Length > 0 ? " " : "") + next.FilterItemId);
+                
                 observationsTable.Rows.Add(
                     o.Id,
                     o.SubjectId,
@@ -474,7 +479,8 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
                     o.Year,
                     o.TimeIdentifier.GetEnumValue(),
                     "{" + string.Join(",", o.Measures.Select(x => $"\"{x.Key}\":\"{x.Value}\"")) + "}",
-                    o.CsvRow
+                    o.CsvRow,
+                    filterItemIdsString
                 );
 
                 foreach (var item in o.FilterItems)

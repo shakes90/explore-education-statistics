@@ -65,11 +65,32 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Services
                 CreateIdListType("wardList", locationsQuery?.Ward);
             var filterItemListParam = CreateIdListType("filterItemList", query.Filters);
 
+            var filterItemsByFilters = _context
+                .FilterItem
+                .Include(f => f.FilterGroup)
+                .ThenInclude(f => f.Filter)
+                .Where(f => query.Filters.Contains(f.Id))
+                .ToLookup(f => f.FilterGroup.Filter)
+                .ToList();
+            
+            var filterItemSearchTermsQuery = filterItemsByFilters
+                .Select(filterAndItems =>
+                {
+                    var filterItems = filterAndItems.AsQueryable();
+                    var filterItemsClause = filterItems
+                        .Select(fi => fi.Id)
+                        .Aggregate("", (current, next) => current + (current.Length > 0 ? " OR " : "") + next);
+                    return $"Contains(FilterItemIds, '{filterItemsClause}')";
+                })
+                .Aggregate("", (current, next) => current + (current.Length > 0 ? " AND " : "") + next);
+
+            var filterItemSearchTermsParam = new SqlParameter("filterItemSearchTerms", filterItemSearchTermsQuery);
+            
             // EES-745 It's ok to use Observation as the return type here, as long as only the Id field is selected
 
             var inner = _context
                 .Set<Observation>()
-                .FromSqlRaw("EXEC dbo.FilteredObservations " +
+                .FromSqlRaw("EXEC dbo.FilteredObservations2 " +
                             "@subjectId," +
                             "@geographicLevel," +
                             "@timePeriodList," +
@@ -88,7 +109,8 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Services
                             "@sponsorList," +
                             "@wardList," +
                             "@planningAreaList," +
-                            "@filterItemList",
+                            "@filterItemList," +
+                            "@filterItemSearchTerms",
                     subjectIdParam,
                     geographicLevelParam,
                     timePeriodListParam,
@@ -107,7 +129,8 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Services
                     sponsorListParam,
                     wardListParam,
                     planningAreaListParam,
-                    filterItemListParam);
+                    filterItemListParam,
+                    filterItemSearchTermsParam);
 
             _logger.LogTrace("Executed inner stored procedure in {Time} ms", stopwatch.Elapsed.TotalMilliseconds);
             stopwatch.Restart();
