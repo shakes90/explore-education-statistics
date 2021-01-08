@@ -22,13 +22,17 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Model.Services
             IQueryable<Observation> observations,
             IEnumerable<Guid> indicators)
         {
-            var filterItems = observations.SelectMany(observation => observation.FilterItems)
-                .Select(item => item.FilterItem.Id).Distinct();
+            var filterItemIds = observations
+                .ToList()
+                .SelectMany(observation => observation
+                    .GetFilterItemIdList()
+                    .Select(Guid.Parse))
+                .Distinct();
 
             var releaseIdParam = new SqlParameter("releaseId", releaseId);
             var subjectIdParam = new SqlParameter("subjectId", subjectId);
             var indicatorListParam = CreateIdListType("indicatorList", indicators);
-            var filterItemListParam = CreateIdListType("filterItemList", filterItems);
+            var filterItemListParam = CreateIdListType("filterItemList", filterItemIds);
 
             return _context
                 .Footnote

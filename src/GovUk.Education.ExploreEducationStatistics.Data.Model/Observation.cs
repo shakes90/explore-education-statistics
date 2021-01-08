@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using GovUk.Education.ExploreEducationStatistics.Common.Extensions;
 using GovUk.Education.ExploreEducationStatistics.Common.Model;
 using GovUk.Education.ExploreEducationStatistics.Common.Model.Data;
 
@@ -16,8 +18,21 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Model
         public int Year { get; set; }
         public TimeIdentifier TimeIdentifier { get; set; }
         public Dictionary<Guid, string> Measures { get; set; }
-        public ICollection<ObservationFilterItem> FilterItems { get; set; }
         public long CsvRow { get; set; }
         public string FilterItemIds { get; set; }
+
+        public List<string> GetFilterItemIdList()
+        {
+            if (FilterItemIds.IsNullOrEmpty())
+            {
+                return new List<string>();
+            }
+            
+            return FilterItemIds
+                .Split(' ', StringSplitOptions.None)
+                .Select(s => s.ToLower())
+                .OrderBy(l => l)
+                .ToList(); 
+        }
     }
 }

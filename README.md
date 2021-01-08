@@ -315,7 +315,7 @@ To generate a migration for the statistics db:
 
 ```
 cd explore-education-statistics\src\GovUk.Education.ExploreEducationStatistics.Data.Api
-dotnet ef migrations add Ees183Test --project ..\GovUk.Education.ExploreEducationStatistics.Data.Model -v
+dotnet ef migrations add Ees183Test --project ..\GovUk.Education.ExploreEducationStatistics.Data.Model --context StatisticsDbContext -v
 ```
 
 #### Users and Roles DB migrations

@@ -148,9 +148,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Services
             {
                 result.AddRange(DbSet()
                     .AsNoTracking()
-                    .Where(observation => batch.Contains(observation.Id))
-                    .Include(observation => observation.FilterItems)
-                    .ThenInclude(item => item.FilterItem.FilterGroup.Filter));
+                    .Where(observation => batch.Contains(observation.Id)));
 
                 // load of the Location owned entities is removed from the query above as it was generating
                 // very inefficient sql.
@@ -173,10 +171,6 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Services
         {
             return DbSet()
                 .AsNoTracking()
-                .Include(observation => observation.FilterItems)
-                .ThenInclude(filterItem => filterItem.FilterItem)
-                .ThenInclude(filterItem => filterItem.FilterGroup)
-                .ThenInclude(filterGroup => filterGroup.Filter)
                 .Where(ObservationPredicateBuilder.Build(query));
         }
 

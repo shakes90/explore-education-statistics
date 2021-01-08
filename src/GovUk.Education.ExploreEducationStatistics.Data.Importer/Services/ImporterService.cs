@@ -269,7 +269,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
             return new Observation
             {
                 Id = observationId,
-                FilterItems = GetFilterItems(context, line, headers, subjectMeta.Filters, observationId),
+                FilterItemIds = GetFilterItemIds(context, line, headers, subjectMeta.Filters, observationId),
                 GeographicLevel = GetGeographicLevel(line, headers),
                 LocationId = GetLocationId(line, headers, context),
                 Measures = GetMeasures(line, headers, subjectMeta.Indicators),
@@ -305,26 +305,23 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
             }
         }
 
-        private ICollection<ObservationFilterItem> GetFilterItems(
+        private string GetFilterItemIds(
             StatisticsDbContext context,
             IReadOnlyList<string> line,
             List<string> headers,
             IEnumerable<(Filter Filter, string Column, string FilterGroupingColumn)> filtersMeta,
             Guid observationId)
         {
-            return filtersMeta.Select(filterMeta =>
-            {
-                var filterItemLabel = CsvUtil.Value(line, headers, filterMeta.Column);
-                var filterGroupLabel = CsvUtil.Value(line, headers, filterMeta.FilterGroupingColumn);
-
-                return new ObservationFilterItem
+            return filtersMeta
+                .Select(filterMeta =>
                 {
-                    ObservationId = observationId,
-                    FilterItemId = _importerFilterService
-                        .Find(filterItemLabel, filterGroupLabel, filterMeta.Filter, context).Id,
-                    FilterId = filterMeta.Filter.Id
-                };
-            }).ToList();
+                    var filterItemLabel = CsvUtil.Value(line, headers, filterMeta.Column);
+                    var filterGroupLabel = CsvUtil.Value(line, headers, filterMeta.FilterGroupingColumn);
+
+                    return _importerFilterService
+                        .Find(filterItemLabel, filterGroupLabel, filterMeta.Filter, context).Id;
+                })
+                .Aggregate("", (current, next) => current + (current.Length > 0 ? " " : "") + next);
         }
 
         private Guid GetLocationId(IReadOnlyList<string> line, List<string> headers, StatisticsDbContext context)
@@ -467,10 +464,6 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
 
             foreach (var o in observations)
             {
-                var filterItemIdsString = o
-                    .FilterItems
-                    .Aggregate("", (current, next) => current + (current.Length > 0 ? " " : "") + next.FilterItemId);
-                
                 observationsTable.Rows.Add(
                     o.Id,
                     o.SubjectId,
@@ -480,17 +473,8 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
                     o.TimeIdentifier.GetEnumValue(),
                     "{" + string.Join(",", o.Measures.Select(x => $"\"{x.Key}\":\"{x.Value}\"")) + "}",
                     o.CsvRow,
-                    filterItemIdsString
+                    o.FilterItemIds
                 );
-
-                foreach (var item in o.FilterItems)
-                {
-                    observationsFilterItemsTable.Rows.Add(
-                        item.ObservationId,
-                        item.FilterItemId,
-                        item.FilterId
-                    );
-                }
             }
 
             var parameter = new SqlParameter("@Observations", SqlDbType.Structured)
@@ -499,14 +483,6 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
             };
 
             await context.Database.ExecuteSqlRawAsync("EXEC [dbo].[InsertObservations] @Observations", parameter);
-
-            parameter = new SqlParameter("@ObservationFilterItems", SqlDbType.Structured)
-            {
-                Value = observationsFilterItemsTable, TypeName = "[dbo].[ObservationFilterItemType]"
-            };
-
-            await context.Database.ExecuteSqlRawAsync(
-                "EXEC [dbo].[InsertObservationFilterItems] @ObservationFilterItems", parameter);
         }
     }
 }
