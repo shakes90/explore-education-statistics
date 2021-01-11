@@ -301,7 +301,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
                 var filterItemLabel = CsvUtil.Value(line, headers, filterMeta.Column);
                 var filterGroupLabel = CsvUtil.Value(line, headers, filterMeta.FilterGroupingColumn);
 
-                _importerFilterService.Find(filterItemLabel, filterGroupLabel, filterMeta.Filter, context);
+                _importerFilterService.GetOrCreate(filterItemLabel, filterGroupLabel, filterMeta.Filter, context);
             }
         }
 
@@ -319,7 +319,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
                     var filterGroupLabel = CsvUtil.Value(line, headers, filterMeta.FilterGroupingColumn);
 
                     return _importerFilterService
-                        .Find(filterItemLabel, filterGroupLabel, filterMeta.Filter, context).Id;
+                        .GetOrCreate(filterItemLabel, filterGroupLabel, filterMeta.Filter, context).Id;
                 })
                 .Aggregate("", (current, next) => current + (current.Length > 0 ? " " : "") + next);
         }

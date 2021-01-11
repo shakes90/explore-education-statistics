@@ -135,7 +135,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Services
             _logger.LogTrace("Executed inner stored procedure in {Time} ms", stopwatch.Elapsed.TotalMilliseconds);
             stopwatch.Restart();
 
-            var ids = inner.Select(obs => obs.Id).ToArray();
+            var ids = inner.Select(obs => obs.NaturalId).ToArray();
 
             _logger.LogTrace("Fetched Observation id's from inner result in {Time} ms", stopwatch.Elapsed.TotalMilliseconds);
             stopwatch.Restart();
@@ -148,7 +148,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Services
             {
                 result.AddRange(DbSet()
                     .AsNoTracking()
-                    .Where(observation => batch.Contains(observation.Id)));
+                    .Where(observation => batch.Contains(observation.NaturalId)));
 
                 // load of the Location owned entities is removed from the query above as it was generating
                 // very inefficient sql.
