@@ -90,7 +90,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Services
 
             var inner = _context
                 .Set<Observation>()
-                .FromSqlRaw("EXEC dbo.FilteredObservations2 " +
+                .FromSqlRaw("EXEC dbo.FilteredObservations " +
                             "@subjectId," +
                             "@geographicLevel," +
                             "@timePeriodList," +
