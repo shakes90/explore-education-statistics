@@ -26,6 +26,7 @@ import tableBuilderService, {
   PublicationSubject,
   ReleaseTableDataQuery,
   SubjectMeta,
+  TableDataResponse,
   TableHighlight,
   ThemeMeta,
 } from '@common/services/tableBuilderService';
@@ -45,10 +46,7 @@ export interface InitialTableToolState {
   highlights?: TableHighlight[];
   subjectMeta?: SubjectMeta;
   query?: ReleaseTableDataQuery;
-  response?: {
-    table: FullTable;
-    tableHeaders: TableHeadersConfig;
-  };
+  response?: TableDataResponse;
 }
 
 interface TableToolState extends InitialTableToolState {
@@ -61,10 +59,7 @@ interface TableToolState extends InitialTableToolState {
 export interface FinalStepRenderProps {
   publication?: Publication;
   query?: ReleaseTableDataQuery;
-  response?: {
-    table: FullTable;
-    tableHeaders: TableHeadersConfig;
-  };
+  response?: TableDataResponse;
 }
 
 export interface TableToolWizardProps {
@@ -73,7 +68,7 @@ export interface TableToolWizardProps {
   finalStep?: (props: FinalStepRenderProps) => ReactElement;
   renderHighlights?: (highlights: TableHighlight[]) => ReactNode;
   scrollOnMount?: boolean;
-  onSubmit?: (table: FullTable) => void;
+  onSubmit?: (table: TableDataResponse) => void;
 }
 
 const TableToolWizard = ({
@@ -238,26 +233,23 @@ const TableToolWizard = ({
       filters: Object.values(filters).flat(),
     };
 
-    const tableData = await tableBuilderService.getTableData(query);
+    const table = await tableBuilderService.getTableData(query);
 
-    if (!tableData.results.length || !tableData.subjectMeta) {
+    if (!table.results.length || !table.subjectMeta) {
       throw new Error(
         'No data available for the options selected. Please try again with different options.',
       );
     }
 
-    const table = mapFullTable(tableData);
-    const tableHeaders = getDefaultTableHeaderConfig(table.subjectMeta);
+    // const table = mapFullTable(tableData);
+    // const tableHeaders = getDefaultTableHeaderConfig(table.subjectMeta);
     if (onSubmit) {
       onSubmit(table);
     }
 
     updateState(draft => {
       draft.query = query;
-      draft.response = {
-        table,
-        tableHeaders,
-      };
+      draft.response = table;
     });
   };
 

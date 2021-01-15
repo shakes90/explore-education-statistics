@@ -69,6 +69,13 @@ const withESLint = createPlugin((config, options) => {
   return config;
 });
 
+const withWorker = createPlugin((config, options) => {
+  config.module.rules.push({
+    test: /\.worker\.(ts|js)$/,
+    use: { loader: 'worker-loader' },
+  });
+});
+
 const nextConfig = {
   publicRuntimeConfig: {
     CONTENT_API_BASE_URL: process.env.CONTENT_API_BASE_URL,
@@ -134,4 +141,5 @@ module.exports = compose(
   withFonts,
   withImages,
   withESLint,
+  withWorker,
 )(nextConfig);

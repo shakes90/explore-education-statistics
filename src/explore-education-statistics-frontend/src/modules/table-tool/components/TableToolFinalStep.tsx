@@ -5,14 +5,21 @@ import useAsyncRetry from '@common/hooks/useAsyncRetry';
 import TableHeadersForm from '@common/modules/table-tool/components/TableHeadersForm';
 import { FinalStepRenderProps } from '@common/modules/table-tool/components/TableToolWizard';
 import TimePeriodDataTable from '@common/modules/table-tool/components/TimePeriodDataTable';
-import { FullTable } from '@common/modules/table-tool/types/fullTable';
 import { TableHeadersConfig } from '@common/modules/table-tool/types/tableHeaders';
+import getDefaultTableHeaderConfig from '@common/modules/table-tool/utils/getDefaultTableHeadersConfig';
+import mapFullTable from '@common/modules/table-tool/utils/mapFullTable';
+import mapTableHeadersConfig from '@common/modules/table-tool/utils/mapTableHeadersConfig';
 import mapUnmappedTableHeaders from '@common/modules/table-tool/utils/mapUnmappedTableHeaders';
-import permalinkService from '@common/services/permalinkService';
+import permalinkService, {
+  UnmappedTableHeadersConfig,
+} from '@common/services/permalinkService';
 import publicationService from '@common/services/publicationService';
-import { TableDataQuery } from '@common/services/tableBuilderService';
+import {
+  TableDataQuery,
+  TableDataResponse,
+} from '@common/services/tableBuilderService';
 import Link from '@frontend/components/Link';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DownloadCsvButton from '@common/modules/table-tool/components/DownloadCsvButton';
 import { logEvent } from '@frontend/services/googleAnalyticsService';
 import DownloadExcelButton from '@common/modules/table-tool/components/DownloadExcelButton';
@@ -20,8 +27,8 @@ import DownloadExcelButton from '@common/modules/table-tool/components/DownloadE
 interface TableToolFinalStepProps {
   publication: FinalStepRenderProps['publication'];
   query: TableDataQuery;
-  table: FullTable;
-  tableHeaders: TableHeadersConfig;
+  table: TableDataResponse;
+  tableHeaders?: UnmappedTableHeadersConfig;
   releaseId?: string;
 }
 
@@ -39,10 +46,16 @@ const TableToolFinalStep = ({
     TableHeadersConfig
   >();
 
+  const fullTable = useMemo(() => mapFullTable(table), [table]);
+
   useEffect(() => {
-    setCurrentTableHeaders(tableHeaders);
+    const initialTableHeaders = tableHeaders
+      ? mapTableHeadersConfig(tableHeaders, fullTable.subjectMeta)
+      : getDefaultTableHeaderConfig(fullTable.subjectMeta);
+
+    setCurrentTableHeaders(initialTableHeaders);
     setPermalinkId('');
-  }, [tableHeaders]);
+  }, [fullTable.subjectMeta, table, tableHeaders]);
 
   const { value: pubMethodology } = useAsyncRetry(async () => {
     if (publication) {
@@ -89,7 +102,7 @@ const TableToolFinalStep = ({
       {table && currentTableHeaders && (
         <TimePeriodDataTable
           ref={dataTableRef}
-          fullTable={table}
+          table={table}
           tableHeadersConfig={currentTableHeaders}
         />
       )}
@@ -151,7 +164,7 @@ const TableToolFinalStep = ({
           <li>
             <DownloadCsvButton
               fileName={`data-${publication.slug}`}
-              fullTable={table}
+              fullTable={fullTable}
               onClick={() =>
                 logEvent(
                   'Table tool',
@@ -171,7 +184,7 @@ const TableToolFinalStep = ({
             <DownloadExcelButton
               fileName={`data-${publication.slug}`}
               tableRef={dataTableRef}
-              subjectMeta={table.subjectMeta}
+              subjectMeta={fullTable.subjectMeta}
               onClick={() =>
                 logEvent(
                   'Table tool',

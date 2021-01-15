@@ -1,6 +1,7 @@
 import ButtonText from '@common/components/ButtonText';
 import useToggle from '@common/hooks/useToggle';
 import { FullTableMeta } from '@common/modules/table-tool/types/fullTable';
+import { TableDataSubjectMeta } from '@common/services/tableBuilderService';
 import commaList from '@common/utils/string/commaList';
 import classNames from 'classnames';
 import React from 'react';
@@ -13,7 +14,7 @@ export function generateTableTitle({
   publicationName,
   filters,
   expanded,
-}: FullTableMeta & {
+}: TableDataSubjectMeta & {
   expanded?: boolean;
 }) {
   const indicatorString =
@@ -42,7 +43,7 @@ export function generateTableTitle({
   )}`;
 
   const filterList = Object.values(filters)
-    .flatMap(filterGroup => filterGroup.options)
+    .flatMap(filterGroup => Object.values(filterGroup.options))
     .map(filter => filter.label)
     .filter(label => label !== 'Total');
   const filterString = filterList.length ? ` for ${commaList(filterList)}` : '';
@@ -50,7 +51,7 @@ export function generateTableTitle({
   return `Table showing ${indicatorString}'${subjectName}'${filterString} from '${publicationName}'${locationsString}${timePeriodString}`;
 }
 
-interface Props extends FullTableMeta {
+interface Props extends TableDataSubjectMeta {
   id?: string;
   title?: string;
 }

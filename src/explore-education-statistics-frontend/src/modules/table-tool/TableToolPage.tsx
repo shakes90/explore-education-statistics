@@ -45,22 +45,13 @@ const TableToolPage: NextPage<TableToolPageProps> = ({
     const { publicationId, subjects, highlights } = publicationMeta;
 
     if (fastTrack && subjectMeta) {
-      const fullTable = mapFullTable(fastTrack.fullTable);
-      const tableHeaders = mapTableHeadersConfig(
-        fastTrack.configuration.tableHeaders,
-        fullTable.subjectMeta,
-      );
-
       return {
         initialStep: 6,
         subjects,
         highlights,
         query: fastTrack.query,
         subjectMeta,
-        response: {
-          table: fullTable,
-          tableHeaders,
-        },
+        response: fastTrack.fullTable,
       };
     }
 
@@ -129,8 +120,8 @@ const TableToolPage: NextPage<TableToolPageProps> = ({
                   <TableToolFinalStep
                     publication={publication}
                     query={query}
-                    table={response.table}
-                    tableHeaders={response.tableHeaders}
+                    table={response}
+                    tableHeaders={fastTrack?.configuration.tableHeaders}
                   />
                 )}
               </>

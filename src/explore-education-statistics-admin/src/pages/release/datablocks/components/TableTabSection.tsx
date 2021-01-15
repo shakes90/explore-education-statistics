@@ -30,11 +30,11 @@ const TableTabSection = ({ table, tableHeaders, onSave }: Props) => {
         }}
       />
 
-      <TimePeriodDataTable
-        fullTable={table}
-        tableHeadersConfig={tableHeaders}
-        ref={dataTableRef}
-      />
+      {/*<TimePeriodDataTable*/}
+      {/*  fullTable={table}*/}
+      {/*  tableHeadersConfig={tableHeaders}*/}
+      {/*  ref={dataTableRef}*/}
+      {/*/>*/}
     </>
   );
 };

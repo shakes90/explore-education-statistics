@@ -12,8 +12,21 @@ import WizardStep from '@common/modules/table-tool/components/WizardStep';
 import WizardStepHeading from '@common/modules/table-tool/components/WizardStepHeading';
 import { FullTable } from '@common/modules/table-tool/types/fullTable';
 import { TableHeadersConfig } from '@common/modules/table-tool/types/tableHeaders';
-import { ReleaseTableDataQuery } from '@common/services/tableBuilderService';
-import React, { createRef, useCallback, useEffect, useState } from 'react';
+import getDefaultTableHeaderConfig from '@common/modules/table-tool/utils/getDefaultTableHeadersConfig';
+import mapFullTable from '@common/modules/table-tool/utils/mapFullTable';
+import mapTableHeadersConfig from '@common/modules/table-tool/utils/mapTableHeadersConfig';
+import { UnmappedTableHeadersConfig } from '@common/services/permalinkService';
+import {
+  ReleaseTableDataQuery,
+  TableDataResponse,
+} from '@common/services/tableBuilderService';
+import React, {
+  createRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 export type DataBlockSourceWizardSaveHandler = (params: {
   details: DataBlockDetailsFormValues;
@@ -25,8 +38,8 @@ export type DataBlockSourceWizardSaveHandler = (params: {
 interface DataBlockSourceWizardFinalStepProps {
   dataBlock?: ReleaseDataBlock;
   query: ReleaseTableDataQuery;
-  table: FullTable;
-  tableHeaders: TableHeadersConfig;
+  table: TableDataResponse;
+  tableHeaders?: UnmappedTableHeadersConfig;
   onSave: DataBlockSourceWizardSaveHandler;
 }
 
@@ -41,26 +54,34 @@ const DataBlockSourceWizardFinalStep = ({
 
   const [currentTableHeaders, setCurrentTableHeaders] = useState<
     TableHeadersConfig
-  >(tableHeaders);
+  >();
 
   const [captionTitle, setCaptionTitle] = useState<string>(
     dataBlock?.heading ?? '',
   );
 
+  const fullTable = useMemo(() => mapFullTable(table), [table]);
+
   useEffect(() => {
+    const initialTableHeaders = tableHeaders
+      ? mapTableHeadersConfig(tableHeaders, fullTable.subjectMeta)
+      : getDefaultTableHeaderConfig(fullTable.subjectMeta);
+
     // Synchronize table headers if the table
     // has been changed by the user.
-    setCurrentTableHeaders(tableHeaders);
-  }, [tableHeaders]);
+    setCurrentTableHeaders(initialTableHeaders);
+  }, [fullTable.subjectMeta, tableHeaders]);
 
   const handleSubmit = useCallback(
     (details: DataBlockDetailsFormValues) => {
-      onSave({
-        details,
-        table,
-        tableHeaders: currentTableHeaders,
-        query,
-      });
+      if (currentTableHeaders) {
+        onSave({
+          details,
+          table: fullTable,
+          tableHeaders: currentTableHeaders,
+          query,
+        });
+      }
     },
     [currentTableHeaders, onSave, query, table],
   );
@@ -83,12 +104,14 @@ const DataBlockSourceWizardFinalStep = ({
           }}
         />
 
-        <TimePeriodDataTable
-          ref={dataTableRef}
-          fullTable={table}
-          captionTitle={captionTitle}
-          tableHeadersConfig={currentTableHeaders}
-        />
+        {currentTableHeaders && (
+          <TimePeriodDataTable
+            ref={dataTableRef}
+            table={table}
+            captionTitle={captionTitle}
+            tableHeadersConfig={currentTableHeaders}
+          />
+        )}
       </div>
 
       <DataBlockDetailsForm
@@ -119,7 +142,6 @@ const DataBlockSourceWizard = ({
   return (
     <div className="govuk-!-margin-bottom-8">
       <p>Configure data source for the data block</p>
-
       <TableToolWizard
         themeMeta={[]}
         initialState={tableToolState}
@@ -135,8 +157,8 @@ const DataBlockSourceWizard = ({
                   <DataBlockSourceWizardFinalStep
                     dataBlock={dataBlock}
                     query={query}
-                    table={response.table}
-                    tableHeaders={response.tableHeaders}
+                    table={response}
+                    tableHeaders={dataBlock?.table.tableHeaders}
                     onSave={onSave}
                   />
                 )}
