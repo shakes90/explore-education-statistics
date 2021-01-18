@@ -4,7 +4,7 @@ import DataFileReplacementPlan from '@admin/pages/release/data/components/DataFi
 import DataFileUploadForm from '@admin/pages/release/data/components/DataFileUploadForm';
 import {
   releaseDataFileReplacementCompleteRoute,
-  ReleaseDataFileRouteParams,
+  ReleaseDataFileReplaceRouteParams,
   releaseDataRoute,
   ReleaseRouteParams,
 } from '@admin/routes/releaseRoutes';
@@ -20,12 +20,12 @@ import useAsyncRetry from '@common/hooks/useAsyncRetry';
 import React from 'react';
 import { generatePath, RouteComponentProps } from 'react-router';
 
-const ReleaseDataFilePage = ({
+const ReleaseDataFileReplacePage = ({
   history,
   match: {
     params: { publicationId, releaseId, fileId },
   },
-}: RouteComponentProps<ReleaseDataFileRouteParams>) => {
+}: RouteComponentProps<ReleaseDataFileReplaceRouteParams>) => {
   const {
     value: dataFile,
     isLoading: dataFileLoading,
@@ -207,7 +207,7 @@ const ReleaseDataFilePage = ({
                     onCancel={fetchDataFile}
                     onReplacement={() => {
                       history.push(
-                        generatePath<ReleaseDataFileRouteParams>(
+                        generatePath<ReleaseDataFileReplaceRouteParams>(
                           releaseDataFileReplacementCompleteRoute.path,
                           {
                             publicationId,
@@ -228,4 +228,4 @@ const ReleaseDataFilePage = ({
   );
 };
 
-export default ReleaseDataFilePage;
+export default ReleaseDataFileReplacePage;

@@ -8,7 +8,7 @@ import { getReleaseStatusLabel } from '@admin/pages/release/utils/releaseSummary
 import {
   releaseContentRoute,
   releaseDataBlocksRoute,
-  releaseDataFileRoute,
+  releaseDataFileReplaceRoute,
   releaseFootnotesRoute,
   releaseDataRoute,
   releasePreReleaseAccessRoute,
@@ -45,7 +45,7 @@ const navRoutes = [
 
 const routes = [
   ...navRoutes,
-  releaseDataFileRoute,
+  releaseDataFileReplaceRoute,
   releaseDataFileReplacementCompleteRoute,
   releaseSummaryEditRoute,
   releaseFootnotesCreateRoute,
