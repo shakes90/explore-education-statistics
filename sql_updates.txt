@@ -1,0 +1,276 @@
+create table ObservationRow
+(
+    Id       bigint identity(1,1) PRIMARY KEY NOT NULL,
+    ObservationId              uniqueidentifier not null,
+    SubjectId       uniqueidentifier not null
+        constraint FK_ObservationRow_Subject_SubjectId
+            references Subject
+            on delete cascade,
+    GeographicLevel nvarchar(6)      not null,
+    LocationId      uniqueidentifier not null
+        constraint FK_ObservationRow_Location_LocationId
+            references Location,
+    Year            int              not null,
+    TimeIdentifier  nvarchar(6)      not null,
+    Measures        nvarchar(max),
+    CsvRow          bigint           not null
+)
+go
+
+create index IX_ObservationRow_GeographicLevel
+    on ObservationRow (GeographicLevel)
+go
+
+create index IX_ObservationRow_LocationId
+    on ObservationRow (LocationId)
+go
+
+create index IX_ObservationRow_SubjectId
+    on ObservationRow (SubjectId)
+go
+
+create index IX_ObservationRow_TimeIdentifier
+    on ObservationRow (TimeIdentifier)
+go
+
+create index IX_ObservationRow_Year
+    on ObservationRow (Year)
+go
+
+create index NCI_WI_ObservationRow_SubjectId
+    on ObservationRow (SubjectId) include (GeographicLevel, LocationId, TimeIdentifier, Year)
+go
+
+create table ObservationRowFilterItem
+(
+    ObservationId bigint not null
+        constraint FK_ObservationRowFilterItem_ObservationRow_Id
+            references ObservationRow (Id)
+            on delete cascade,
+    OldObservationId uniqueidentifier not null,
+    FilterItemId  uniqueidentifier not null
+        constraint FK_ObservationRowFilterItem_FilterItem_FilterItemId
+            references FilterItem,
+    FilterId      uniqueidentifier
+        constraint FK_ObservationRowFilterItem_Filter_FilterId
+            references Filter,
+    constraint PK_ObservationRowFilterItem
+        primary key (ObservationId, FilterItemId)
+)
+go
+
+create index IX_ObservationRowFilterItem_FilterItemId
+    on ObservationRowFilterItem (FilterItemId)
+
+create index IX_ObservationRowFilterItem_FilterId
+    on ObservationRowFilterItem (FilterId)
+go
+
+INSERT INTO ObservationRow (ObservationId, SubjectId, GeographicLevel, LocationId, Year, TimeIdentifier, Measures, CsvRow)
+SELECT o2.Id,
+       o2.SubjectId,
+       o2.GeographicLevel,
+       o2.LocationId,
+       o2.Year,
+       o2.TimeIdentifier,
+       o2.Measures,
+       o2.CsvRow FROM (SELECT TOP 200000 o.Id,
+                                         o.SubjectId,
+                                         o.GeographicLevel,
+                                         o.LocationId,
+                                         o.Year,
+                                         o.TimeIdentifier,
+                                         o.Measures,
+                                         o.CsvRow
+                       FROM Observation o
+                       WHERE o.Id NOT IN (SELECT ObservationId FROM ObservationRow)
+                       ORDER BY o.SubjectId ASC, o.CsvRow ASC) as o2;
+
+INSERT INTO ObservationRowFilterItem (ObservationId, OldObservationId, FilterItemId, FilterId)
+SELECT o2.Id, o2.ObservationId, o2.FilterItemId, o2.FilterId FROM (
+                                                                      SELECT TOP 2000000 row.Id, ofi.ObservationId, ofi.FilterItemId, ofi.FilterId
+                                                                      FROM ObservationFilterItem ofi
+                                                                               JOIN ObservationRow row ON row.ObservationId = ofi.ObservationId
+                                                                      WHERE NOT EXISTS(SELECT 1 FROM ObservationRowFilterItem row2 WHERE row2.OldObservationId = ofi.ObservationId AND ofi.FilterItemId = row2.FilterItemId)
+                                                                  ) as o2;
+
+ALTER TABLE ObservationRowFilterItem DROP COLUMN OldObservationId;
+
+
+
+
+DROP PROCEDURE InsertObservations;
+
+DROP TYPE ObservationType;
+
+CREATE TYPE ObservationType AS TABLE
+(
+    ObservationId   uniqueidentifier not null,
+    SubjectId       uniqueidentifier not null,
+    GeographicLevel nvarchar(6)      not null,
+    LocationId      uniqueidentifier not null,
+    Year            int,
+    TimeIdentifier  nvarchar(6),
+    Measures        nvarchar(max),
+    CsvRow          bigint
+);
+
+DROP Procedure InsertObservationFilterItems;
+
+DROP TYPE ObservationFilterItemType;
+
+CREATE TYPE ObservationFilterItemType AS table
+(
+    ObservationId  bigint NOT NULL,
+    FilterItemId  uniqueidentifier NOT NULL,
+    FilterId uniqueidentifier NOT NULL
+);
+
+CREATE PROCEDURE InsertObservations @Observations dbo.ObservationType READONLY
+AS
+BEGIN
+    INSERT INTO ObservationRow SELECT * FROM @Observations
+END
+GO
+
+CREATE PROCEDURE InsertObservationFilterItems @ObservationFilterItems dbo.ObservationFilterItemType READONLY
+AS
+BEGIN
+    INSERT INTO ObservationRowFilterItem SELECT * FROM @ObservationFilterItems
+END
+GO
+
+
+CREATE OR ALTER PROCEDURE FilteredObservations
+    @subjectId uniqueidentifier,
+    @geographicLevel nvarchar(6) = NULL,
+    @timePeriodList TimePeriodListType READONLY,
+    @countriesList IdListVarcharType READONLY,
+    @institutionsList IdListVarcharType READONLY,
+    @localAuthorityList IdListVarcharType READONLY,
+    @localAuthorityOldCodeList IdListVarcharType READONLY,
+    @localAuthorityDistrictList IdListVarcharType READONLY,
+    @localEnterprisePartnershipsList IdListVarcharType READONLY,
+    @mayoralCombinedAuthoritiesList IdListVarcharType READONLY,
+    @multiAcademyTrustList IdListVarcharType READONLY,
+    @opportunityAreasList IdListVarcharType READONLY,
+    @parliamentaryConstituenciesList IdListVarcharType READONLY,
+    @regionsList IdListVarcharType READONLY,
+    @rscRegionsList IdListVarcharType READONLY,
+    @sponsorList IdListVarcharType READONLY,
+    @wardsList IdListVarcharType READONLY,
+    @planningAreasList IdListVarcharType READONLY,
+    @filterItemList IdListGuidType READONLY
+AS
+DECLARE
+    @timePeriodCount INT = (SELECT count(year) FROM @timePeriodList),
+    @observationalUnitExists BIT = CAST(IIF(
+                EXISTS(SELECT TOP 1 1 FROM @countriesList)
+                OR EXISTS(SELECT TOP 1 1 FROM @institutionsList)
+                OR EXISTS(SELECT TOP 1 1 FROM @localAuthorityList)
+                OR EXISTS(SELECT TOP 1 1 FROM @localAuthorityOldCodeList)
+                OR EXISTS(SELECT TOP 1 1 FROM @localAuthorityDistrictList)
+                OR EXISTS(SELECT TOP 1 1 FROM @localEnterprisePartnershipsList)
+                OR EXISTS(SELECT TOP 1 1 FROM @mayoralCombinedAuthoritiesList)
+                OR EXISTS(SELECT TOP 1 1 FROM @multiAcademyTrustList)
+                OR EXISTS(SELECT TOP 1 1 FROM @opportunityAreasList)
+                OR EXISTS(SELECT TOP 1 1 FROM @parliamentaryConstituenciesList)
+                OR EXISTS(SELECT TOP 1 1 FROM @regionsList)
+                OR EXISTS(SELECT TOP 1 1 FROM @rscRegionsList)
+                OR EXISTS(SELECT TOP 1 1 FROM @sponsorList)
+                OR EXISTS(SELECT TOP 1 1 FROM @wardsList)
+                OR EXISTS(SELECT TOP 1 1 FROM @planningAreasList), 1, 0) AS BIT),
+    @paramDefinition NVARCHAR(2000),
+    @sqlString NVARCHAR(2000) = N'SELECT o.id ' +
+                                'FROM ObservationRow o ' +
+                                'JOIN Location l ON o.LocationId = l.Id ' +
+                                'LEFT JOIN ObservationRowFilterItem ofi ON o.Id = ofi.ObservationId ' +
+                                'AND ofi.FilterItemId IN (SELECT id FROM @filterItemList) ' +
+                                'WHERE o.SubjectId = @subjectId '
+    IF (@geographicLevel IS NOT NULL)
+        SET @sqlString = @sqlString + N'AND o.GeographicLevel = @geographicLevel '
+    IF (@timePeriodCount > 0)
+        SET @sqlString = @sqlString + N'AND EXISTS(SELECT 1 from @timePeriodList t WHERE t.year = o.Year AND t.timeIdentifier = o.TimeIdentifier) '
+    IF (@observationalUnitExists = 1)
+        BEGIN
+            SET @sqlString = @sqlString + N'AND ('
+            IF (EXISTS(SELECT TOP 1 1 FROM @countriesList))
+                SET @sqlString = @sqlString + N'(l.Country_Code IN (SELECT id from @countriesList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''NAT'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @institutionsList))
+                SET @sqlString = @sqlString + N'(l.Institution_Code IN (SELECT id from @institutionsList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''INS'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @localAuthorityList))
+                SET @sqlString = @sqlString + N'(l.LocalAuthority_Code IN (SELECT id from @localAuthorityList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''LA'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @localAuthorityOldCodeList))
+                SET @sqlString = @sqlString + N'(l.LocalAuthority_OldCode IN (SELECT id from @localAuthorityOldCodeList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''LA'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @localAuthorityDistrictList))
+                SET @sqlString = @sqlString + N'(l.LocalAuthorityDistrict_Code IN (SELECT id from @localAuthorityDistrictList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''LAD'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @localEnterprisePartnershipsList))
+                SET @sqlString = @sqlString + N'(l.LocalEnterprisePartnership_Code IN (SELECT id from @localEnterprisePartnershipsList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''LEP'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @mayoralCombinedAuthoritiesList))
+                SET @sqlString = @sqlString + N'(l.MayoralCombinedAuthority_Code IN (SELECT id from @mayoralCombinedAuthoritiesList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''MCA'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @multiAcademyTrustList))
+                SET @sqlString = @sqlString + N'(l.MultiAcademyTrust_Code IN (SELECT id from @multiAcademyTrustList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''MAT'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @opportunityAreasList))
+                SET @sqlString = @sqlString + N'(l.OpportunityArea_Code IN (SELECT id from @opportunityAreasList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''OA'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @parliamentaryConstituenciesList))
+                SET @sqlString = @sqlString + N'(l.ParliamentaryConstituency_Code IN (SELECT id from @parliamentaryConstituenciesList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''PC'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @regionsList))
+                SET @sqlString = @sqlString + N'(l.Region_Code IN (SELECT id from @regionsList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''REG'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @rscRegionsList))
+                SET @sqlString = @sqlString + N'(l.RscRegion_Code IN (SELECT id from @rscRegionsList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''RSCR'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @sponsorList))
+                SET @sqlString = @sqlString + N'(l.Sponsor_Code IN (SELECT id from @sponsorList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''SPO'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @wardsList))
+                SET @sqlString = @sqlString + N'(l.Ward_Code IN (SELECT id from @wardsList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''WAR'')) OR '
+            IF (EXISTS(SELECT TOP 1 1 FROM @planningAreasList))
+                SET @sqlString = @sqlString + N'(l.PlanningArea_Code IN (SELECT id from @planningAreasList) AND (@geographicLevel IS NOT NULL OR o.GeographicLevel = ''PA'')) OR '
+            SET @sqlString = left(@sqlString, len(@sqlString) - 3) + N') '
+        END
+    SET @sqlString = @sqlString + N'GROUP BY o.Id ' +
+                     'HAVING COUNT(DISTINCT ofi.FilterItemId) = (' +
+                     '    SELECT COUNT(DISTINCT f.id) AS filterCount' +
+                     '    FROM' +
+                     '    FilterItem fi' +
+                     '    JOIN FilterGroup fg ON fi.FilterGroupId = fg.Id' +
+                     '    JOIN Filter f ON fg.FilterId = f.Id' +
+                     '    WHERE fi.Id IN (SELECT id FROM @filterItemList)' +
+                     ');'
+    SET @paramDefinition = N'@subjectId uniqueidentifier,
+                           @geographicLevel nvarchar(6) = NULL,
+                           @timePeriodList TimePeriodListType READONLY,
+                           @countriesList IdListVarcharType READONLY,
+                           @institutionsList IdListVarcharType READONLY,
+                           @localAuthorityList IdListVarcharType READONLY,
+                           @localAuthorityOldCodeList IdListVarcharType READONLY,
+                           @localAuthorityDistrictList IdListVarcharType READONLY,
+                           @localEnterprisePartnershipsList IdListVarcharType READONLY,
+                           @mayoralCombinedAuthoritiesList IdListVarcharType READONLY,
+                           @multiAcademyTrustList IdListVarcharType READONLY,
+                           @opportunityAreasList IdListVarcharType READONLY,
+                           @parliamentaryConstituenciesList IdListVarcharType READONLY,
+                           @regionsList IdListVarcharType READONLY,
+                           @rscRegionsList IdListVarcharType READONLY,
+                           @sponsorList IdListVarcharType READONLY,
+                           @wardsList IdListVarcharType READONLY,
+                           @planningAreasList IdListVarcharType READONLY,
+                           @filterItemList IdListGuidType READONLY'
+    EXEC sp_executesql @sqlString, @paramDefinition,
+         @subjectId = @subjectId,
+         @geographicLevel = @geographicLevel,
+         @timePeriodList = @timePeriodList,
+         @countriesList = @countriesList,
+         @institutionsList = @institutionsList,
+         @localAuthorityList = @localAuthorityList,
+         @localAuthorityOldCodeList = @localAuthorityOldCodeList,
+         @localAuthorityDistrictList = @localAuthorityDistrictList,
+         @localEnterprisePartnershipsList = @localEnterprisePartnershipsList,
+         @mayoralCombinedAuthoritiesList = @mayoralCombinedAuthoritiesList,
+         @multiAcademyTrustList = @multiAcademyTrustList,
+         @opportunityAreasList = @opportunityAreasList,
+         @parliamentaryConstituenciesList = @parliamentaryConstituenciesList,
+         @regionsList = @regionsList,
+         @rscRegionsList = @rscRegionsList,
+         @sponsorList = @sponsorList,
+         @wardsList = @wardsList,
+         @planningAreasList = @planningAreasList,
+         @filterItemList = @filterItemList;

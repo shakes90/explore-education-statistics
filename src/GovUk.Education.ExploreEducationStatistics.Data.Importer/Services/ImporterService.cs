@@ -11,12 +11,12 @@ using GovUk.Education.ExploreEducationStatistics.Common.Services.Interfaces;
 using GovUk.Education.ExploreEducationStatistics.Data.Importer.Exceptions;
 using GovUk.Education.ExploreEducationStatistics.Data.Importer.Models;
 using GovUk.Education.ExploreEducationStatistics.Data.Importer.Services.Interfaces;
+using GovUk.Education.ExploreEducationStatistics.Data.Importer.Utils;
 using GovUk.Education.ExploreEducationStatistics.Data.Model;
 using GovUk.Education.ExploreEducationStatistics.Data.Model.Database;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using static GovUk.Education.ExploreEducationStatistics.Common.Services.ImportStatusService;
+using Unit = GovUk.Education.ExploreEducationStatistics.Common.Model.Unit;
 
 namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
 {
@@ -178,7 +178,12 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
                 batchNo,
                 rowsPerBatch).ToList();
 
-            await InsertObservations(context, observations);
+            await DbUtils.ExecuteWithExclusiveLock(context, "InsertObservations", async ctx =>
+            {
+                await context.Observation.AddRangeAsync(observations);
+                await context.SaveChangesAsync();
+                return Unit.Instance;
+            });
         }
 
         public static GeographicLevel GetGeographicLevel(IReadOnlyList<string> line, List<string> headers)
@@ -268,8 +273,8 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
 
             return new Observation
             {
-                Id = observationId,
-                FilterItems = GetFilterItems(context, line, headers, subjectMeta.Filters, observationId),
+                ObservationId = observationId,
+                FilterItems = GetFilterItems(context, line, headers, subjectMeta.Filters),
                 GeographicLevel = GetGeographicLevel(line, headers),
                 LocationId = GetLocationId(line, headers, context),
                 Measures = GetMeasures(line, headers, subjectMeta.Indicators),
@@ -309,8 +314,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
             StatisticsDbContext context,
             IReadOnlyList<string> line,
             List<string> headers,
-            IEnumerable<(Filter Filter, string Column, string FilterGroupingColumn)> filtersMeta,
-            Guid observationId)
+            IEnumerable<(Filter Filter, string Column, string FilterGroupingColumn)> filtersMeta)
         {
             return filtersMeta.Select(filterMeta =>
             {
@@ -319,7 +323,6 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
 
                 return new ObservationFilterItem
                 {
-                    ObservationId = observationId,
                     FilterItemId = _importerFilterService
                         .Find(filterItemLabel, filterGroupLabel, filterMeta.Filter, context).Id,
                     FilterId = filterMeta.Filter.Id
@@ -445,62 +448,6 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Importer.Services
         {
             return CsvUtil.BuildType(line, headers, ColumnValues[Columns.PLANNING_AREA_COLS], values =>
                 new PlanningArea(values[0], values[1]));
-        }
-
-        private async Task InsertObservations(DbContext context, IEnumerable<Observation> observations)
-        {
-            var observationsTable = new DataTable();
-            observationsTable.Columns.Add("Id", typeof(Guid));
-            observationsTable.Columns.Add("SubjectId", typeof(Guid));
-            observationsTable.Columns.Add("GeographicLevel", typeof(string));
-            observationsTable.Columns.Add("LocationId", typeof(Guid));
-            observationsTable.Columns.Add("Year", typeof(int));
-            observationsTable.Columns.Add("TimeIdentifier", typeof(string));
-            observationsTable.Columns.Add("Measures", typeof(string));
-            observationsTable.Columns.Add("CsvRow", typeof(long));
-
-            var observationsFilterItemsTable = new DataTable();
-            observationsFilterItemsTable.Columns.Add("ObservationId", typeof(Guid));
-            observationsFilterItemsTable.Columns.Add("FilterItemId", typeof(Guid));
-            observationsFilterItemsTable.Columns.Add("FilterId", typeof(Guid));
-
-            foreach (var o in observations)
-            {
-                observationsTable.Rows.Add(
-                    o.Id,
-                    o.SubjectId,
-                    o.GeographicLevel.GetEnumValue(),
-                    o.LocationId,
-                    o.Year,
-                    o.TimeIdentifier.GetEnumValue(),
-                    "{" + string.Join(",", o.Measures.Select(x => $"\"{x.Key}\":\"{x.Value}\"")) + "}",
-                    o.CsvRow
-                );
-
-                foreach (var item in o.FilterItems)
-                {
-                    observationsFilterItemsTable.Rows.Add(
-                        item.ObservationId,
-                        item.FilterItemId,
-                        item.FilterId
-                    );
-                }
-            }
-
-            var parameter = new SqlParameter("@Observations", SqlDbType.Structured)
-            {
-                Value = observationsTable, TypeName = "[dbo].[ObservationType]"
-            };
-
-            await context.Database.ExecuteSqlRawAsync("EXEC [dbo].[InsertObservations] @Observations", parameter);
-
-            parameter = new SqlParameter("@ObservationFilterItems", SqlDbType.Structured)
-            {
-                Value = observationsFilterItemsTable, TypeName = "[dbo].[ObservationFilterItemType]"
-            };
-
-            await context.Database.ExecuteSqlRawAsync(
-                "EXEC [dbo].[InsertObservationFilterItems] @ObservationFilterItems", parameter);
         }
     }
 }
