@@ -1,4 +1,5 @@
 import ReleaseContentPage from '@admin/pages/release/content/ReleaseContentPage';
+import ReleaseDataFilePage from '@admin/pages/release/data/ReleaseDataFilePage';
 import ReleaseDataFileReplacePage from '@admin/pages/release/data/ReleaseDataFileReplacePage';
 import ReleaseDataFileReplacementCompletePage from '@admin/pages/release/data/ReleaseDataFileReplacementCompletePage';
 import ReleaseDataPage from '@admin/pages/release/data/ReleaseDataPage';
@@ -19,6 +20,10 @@ export type ReleaseRouteParams = {
 
 export type ReleaseDataBlocksRouteParams = ReleaseRouteParams & {
   dataBlockId?: string;
+};
+
+export type ReleaseDataFileRouteParams = ReleaseRouteParams & {
+  fileId: string;
 };
 
 export type ReleaseDataFileReplaceRouteParams = ReleaseRouteParams & {
@@ -52,11 +57,11 @@ export const releaseDataRoute: ReleaseRouteProps = {
   component: ReleaseDataPage,
 };
 
-//export const releaseDataFileRoute: ReleaseRouteProps = {
-//  path: '/publication/:publicationId/release/:releaseId/data/:fileId',
-//  title: 'Data file',
-//  component: ReleaseDataFilePage,
-//};
+export const releaseDataFileRoute: ReleaseRouteProps = {
+  path: '/publication/:publicationId/release/:releaseId/data/:fileId',
+  title: 'Data file',
+  component: ReleaseDataFilePage,
+};
 
 export const releaseDataFileReplaceRoute: ReleaseRouteProps = {
   path: '/publication/:publicationId/release/:releaseId/data/:fileId/replace',
