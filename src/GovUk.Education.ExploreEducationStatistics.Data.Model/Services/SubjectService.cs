@@ -47,7 +47,7 @@ namespace GovUk.Education.ExploreEducationStatistics.Data.Model.Services
             return await _context
                 .ReleaseSubject
                 .Include(r => r.Subject)
-                .Where(r => r.ReleaseId == releaseId && r.Subject.Name == subjectName)
+                .Where(r => r.ReleaseId == releaseId && r.SubjectName == subjectName)
                 .Select(r => r.Subject)
                 .FirstOrDefaultAsync();
         }
